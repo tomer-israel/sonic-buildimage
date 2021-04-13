@@ -13,6 +13,7 @@ try:
     from sonic_platform_base.component_base import ComponentBase
     from sonic_py_common import device_info
     from sonic_py_common.logger import Logger
+    from sonic_py_common.device_info import get_platform
     from os import listdir
     from os.path import isfile, join
     import sys
@@ -86,6 +87,9 @@ class Chassis(ChassisBase):
 
 
     def initialize_psu(self):
+        if 'simx' in get_platform():
+            return
+            
         from sonic_platform.psu import Psu
         # Initialize PSU list
         self.psu_module = Psu
@@ -95,6 +99,9 @@ class Chassis(ChassisBase):
 
 
     def initialize_fan(self):
+        if 'simx' in get_platform():
+            return
+        
         from .device_data import DEVICE_DATA
         from sonic_platform.fan import Fan
         from .fan_drawer import RealDrawer, VirtualDrawer
@@ -116,6 +123,9 @@ class Chassis(ChassisBase):
 
 
     def initialize_sfp(self):
+        if 'simx' in get_platform():
+            return
+        
         from sonic_platform.sfp import SFP
 
         self.sfp_module = SFP
@@ -148,6 +158,8 @@ class Chassis(ChassisBase):
 
 
     def initialize_thermals(self):
+        if 'simx' in get_platform():
+            return
         from sonic_platform.thermal import initialize_chassis_thermals
         # Initialize thermals
         initialize_chassis_thermals(self.platform_name, self._thermal_list)
@@ -163,6 +175,8 @@ class Chassis(ChassisBase):
 
 
     def initialize_components(self):
+        if 'simx' in get_platform():
+            return
         # Initialize component list
         from sonic_platform.component import ComponentONIE, ComponentSSD, ComponentBIOS, ComponentCPLD
         self._component_list.append(ComponentONIE())
@@ -171,6 +185,8 @@ class Chassis(ChassisBase):
         self._component_list.extend(ComponentCPLD.get_component_list())
 
     def initizalize_system_led(self):
+        if 'simx' in get_platform():
+            return
         from .led import SystemLed
         Chassis._led = SystemLed()
 

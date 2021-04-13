@@ -9,7 +9,7 @@ import os
 import sys
 import re
 import time
-
+import subprocess
 if sys.version_info.major == 3:
     from io import StringIO
 else:
@@ -19,6 +19,8 @@ from sonic_py_common.logger import Logger
 
 try:
     from sonic_platform_base.sonic_eeprom import eeprom_tlvinfo
+    from sonic_py_common.device_info import get_path_to_platform_dir
+    from sonic_py_common.device_info import get_platform
 except ImportError as e:
     raise ImportError (str(e) + "- required module not found")
 
@@ -47,22 +49,28 @@ class Eeprom(eeprom_tlvinfo.TlvInfoDecoder):
     EEPROM_DECODE_CONTENT = 2
 
     def __init__(self):
-        for attempt in range(self.RETRIES):
-            if not os.path.islink(EEPROM_SYMLINK):
-                time.sleep(1)
-            else:
-                break  
-
-        if not (os.path.exists(EEPROM_SYMLINK) \
-                or os.path.isfile(os.path.join(CACHE_ROOT, CACHE_FILE))):
-            log_error("Nowhere to read syseeprom from! No symlink or cache file found")
-            raise RuntimeError("No syseeprom symlink or cache file found")
+        self._onie_platform = get_platform()
+        
+        self._wait_for_eeprom_symlink()
 
         self.eeprom_path = EEPROM_SYMLINK
         super(Eeprom, self).__init__(self.eeprom_path, 0, '', True)
         self._eeprom_loaded = False
         self._load_eeprom()
         self._eeprom_loaded = True
+
+    def _wait_for_eeprom_symlink(self):
+        if 'simx' not in self._onie_platform:
+            for attempt in range(self.RETRIES):
+                if not os.path.islink(EEPROM_SYMLINK):
+                    time.sleep(1)
+                else:
+                    break  
+        
+            if not (os.path.exists(EEPROM_SYMLINK) \
+                    or os.path.isfile(os.path.join(CACHE_ROOT, CACHE_FILE))):
+                log_error("Nowhere to read syseeprom from! No symlink or cache file found")
+                raise RuntimeError("No syseeprom symlink or cache file found")
 
     def _load_eeprom(self):
         cache_file = os.path.join(CACHE_ROOT, CACHE_FILE)
@@ -79,6 +87,13 @@ class Eeprom(eeprom_tlvinfo.TlvInfoDecoder):
             except Exception as e:
                 logger.log_error('Failed to remove cache file {} - {}'.format(cache_file, repr(e)))
 
+        if 'simx' in self._onie_platform:
+            platform_path = get_path_to_platform_dir()
+            
+            if not os.path.exists(platform_path):
+                platform_path = '/usr/share/sonic/platform'
+            subprocess.check_call(['/usr/bin/xxd', '-r', '-p', 'syseeprom.hex', cache_file], cwd=platform_path)
+            
         try:
             self.set_cache_name(cache_file)
         except:
