@@ -23,7 +23,8 @@ try:
 
     from sonic_eeprom import eeprom_base
     from sonic_eeprom import eeprom_tlvinfo
-    from sonic_py_common.device_info import get_machine_info
+    from sonic_py_common.device_info import get_path_to_platform_dir
+    from sonic_py_common.device_info import get_platform
     import subprocess
 except ImportError as e:
     raise ImportError(str(e) + "- required module not found")
@@ -38,14 +39,13 @@ def log_error(msg):
     syslog.syslog(syslog.LOG_ERR, msg)
     syslog.closelog()
 
-
-machine_info = get_machine_info()
-onie_platform = machine_info['onie_platform']
+onie_platform = get_platform()
 if 'simx' in onie_platform:
-    platform_path = os.path.join('/usr/share/sonic/device', onie_platform)
-    subprocess.check_call(['/usr/bin/xxd', '-r', '-p', 'syseeprom.hex', 'syseeprom.bin'], cwd=platform_path)
-    CACHE_FILE = os.path.join(platform_path, 'syseeprom.bin')
-
+    platform_path = get_path_to_platform_dir()
+    if not os.path.exists(os.path.dirname(CACHE_FILE)):
+        os.makedirs(os.path.dirname(CACHE_FILE))
+    if not os.path.exists(CACHE_FILE):
+        subprocess.check_call(['/usr/bin/xxd', '-r', '-p', 'syseeprom.hex', CACHE_FILE], cwd=platform_path)
 
 class board(eeprom_tlvinfo.TlvInfoDecoder):
 
